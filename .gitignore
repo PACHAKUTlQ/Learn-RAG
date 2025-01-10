@@ -1,3 +1,8 @@
+# RAG stuff
+chroma_data/
+chroma.log
+documents/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -169,3 +174,4 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+.aider*
