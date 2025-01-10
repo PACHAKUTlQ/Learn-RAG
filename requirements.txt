@@ -1,0 +1,5 @@
+langchain-community==0.3.14
+chromadb==0.5.0
+python-dotenv==1.0.1
+typing-extensions==4.12.2
+openai>=1.0.0
