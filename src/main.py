@@ -1,19 +1,18 @@
+import os
 import argparse
-from config import Config
+from config import config
 from typing import List
 from pathlib import Path
 from datetime import datetime
 from data.document import Document
 from models.embedding import OpenAIEmbeddingModel
 from pipelines.rag import RAGPipeline
-from utils.environment import load_environment_variables
 
 
 class RAGCLI:
     """Command-line interface for RAG pipeline operations."""
 
     def __init__(self):
-        load_environment_variables()
         self.embedding_model = OpenAIEmbeddingModel()
         self.rag_pipeline = RAGPipeline(self.embedding_model)
 
@@ -24,7 +23,7 @@ class RAGCLI:
 
     def add_documents(self,
                       file_paths: List[str],
-                      chunk_size: int = Config.OPENAI_CHUNK_SIZE,
+                      chunk_size: int = config.OPENAI_CHUNK_SIZE,
                       chunk_overlap: int = 0):
         """Add and process documents to the vector store."""
         for file_path in file_paths:
@@ -79,8 +78,8 @@ def main():
                             help='Path(s) to document file(s) to add')
     add_parser.add_argument('--chunk-size',
                             type=int,
-                            default=1000,
-                            help='Size of text chunks (default: 1000)')
+                            default=config.OPENAI_CHUNK_SIZE,
+                            help='Size of text chunks (default: 300)')
     add_parser.add_argument('--chunk-overlap',
                             type=int,
                             default=0,

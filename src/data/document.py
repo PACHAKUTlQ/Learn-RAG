@@ -1,4 +1,4 @@
-from config import Config
+from config import config
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import CharacterTextSplitter
 
@@ -7,7 +7,7 @@ class Document:
 
     def __init__(self,
                  filepath: str,
-                 chunk_size: int = Config.OPENAI_CHUNK_SIZE,
+                 chunk_size: int = config.OPENAI_CHUNK_SIZE,
                  chunk_overlap: int = 0,
                  metadata: dict = None):
         self.filepath = filepath

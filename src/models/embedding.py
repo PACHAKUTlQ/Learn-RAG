@@ -1,4 +1,4 @@
-from config import Config
+from config import config
 from typing import List
 from openai import OpenAI
 
@@ -7,9 +7,9 @@ class OpenAIEmbeddingModel:
     """Wrapper for OpenAI embedding model using official OpenAI package."""
 
     def __init__(self):
-        self.client = OpenAI(base_url=Config.OPENAI_API_BASE,
-                             api_key=Config.OPENAI_API_KEY)
-        self.model = Config.OPENAI_MODEL
+        self.client = OpenAI(base_url=config.OPENAI_API_BASE,
+                             api_key=config.OPENAI_API_KEY)
+        self.model = config.OPENAI_MODEL
 
     def embed_documents(self, documents: List[str]) -> List[List[float]]:
         """Embed multiple documents."""
