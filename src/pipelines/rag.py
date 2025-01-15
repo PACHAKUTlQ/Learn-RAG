@@ -59,6 +59,11 @@ class RAGPipeline:
             # Insert chunks and embeddings
             chunk_data = []
             for doc_id, doc, embedding in zip(doc_ids, documents, embeddings):
+                print([
+                    doc.metadata.get('chunk_index'),
+                    doc.metadata.get('start_char'),
+                    doc.metadata.get('end_char')
+                ])
                 chunk_data.append(
                     (doc_id, doc.page_content,
                      doc.metadata.get('chunk_index',
@@ -66,7 +71,12 @@ class RAGPipeline:
                      doc.metadata.get('end_char',
                                       0), json.dumps(doc.metadata), embedding))
 
-            # print(chunk_data)
+            sample_data = chunk_data.copy()
+            for i in range(len(sample_data)):
+                sample_data[i] = list(sample_data[i])
+                sample_data[i][1] = ''  # empty page_content
+                sample_data[i][6] = []  # empty embedding
+            print("Sample data:", sample_data)
 
             # Insert chunks and embeddings in a single transaction
             try:
@@ -88,12 +98,21 @@ class RAGPipeline:
                             (document_id, chunk_text, chunk_index, start_char, end_char, metadata)
                         SELECT doc_id, page_content, chunk_index, start_char, end_char, metadata
                         FROM data
-                        RETURNING id
+                        ON CONFLICT (document_id, chunk_index) 
+                        DO UPDATE SET 
+                            chunk_text = EXCLUDED.chunk_text,
+                            start_char = EXCLUDED.start_char,
+                            end_char = EXCLUDED.end_char,
+                            metadata = EXCLUDED.metadata
+                        RETURNING id, chunk_index
                     )
                     INSERT INTO embeddings (chunk_id, embedding)
-                    SELECT inserted_chunks.id, data.embedding
-                    FROM inserted_chunks
-                    JOIN data ON true
+                    SELECT ic.id, d.embedding
+                    FROM inserted_chunks ic
+                    JOIN data d ON ic.chunk_index = d.chunk_index
+                    ON CONFLICT (chunk_id)
+                    DO UPDATE SET 
+                        embedding = EXCLUDED.embedding
                     """,
                                chunk_data,
                                page_size=100)

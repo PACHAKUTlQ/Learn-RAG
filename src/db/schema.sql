@@ -19,7 +19,8 @@ CREATE TABLE chunks (
     start_char INTEGER,
     end_char INTEGER,
     metadata JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (document_id, chunk_index)
 );
 
 -- Create embeddings table
