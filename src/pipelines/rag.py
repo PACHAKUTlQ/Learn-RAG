@@ -43,14 +43,18 @@ class RAGPipeline:
             # Insert documents and get their IDs
             doc_ids = []
             for doc in documents:
-                cur.execute(
-                    """
-                    INSERT INTO documents (filepath, filename)
-                    VALUES (%s, %s)
-                    ON CONFLICT (filepath) DO UPDATE
-                    SET updated_at = CURRENT_TIMESTAMP
-                    RETURNING id
-                """, (doc.metadata['filepath'], doc.metadata['filename']))
+                try:
+                    cur.execute(
+                        """
+                        INSERT INTO documents (filepath, filename)
+                        VALUES (%s, %s)
+                        ON CONFLICT (filepath) DO UPDATE
+                        SET updated_at = CURRENT_TIMESTAMP
+                        RETURNING id
+                    """, (doc.metadata['filepath'], doc.metadata['filename']))
+                except Exception as e:
+                    print(f"Error inserting document: {e}")
+                    continue
                 doc_ids.append(cur.fetchone()[0])
 
             # Insert chunks and embeddings
@@ -63,21 +67,24 @@ class RAGPipeline:
                                    json.dumps(doc.metadata), embedding))
 
             # Insert chunks and embeddings in a single transaction
-            execute_values(cur,
-                           """
-                WITH inserted_chunks AS (
-                    INSERT INTO chunks 
-                    (document_id, chunk_text, chunk_index, start_char, end_char, metadata)
-                    VALUES %s
-                    RETURNING id
-                )
-                INSERT INTO embeddings (chunk_id, embedding)
-                SELECT ic.id, v.embedding
-                FROM inserted_chunks ic
-                JOIN (VALUES %s) AS v(embedding)
-                ON true
-                """, [(row[:-1], (row[-1], )) for row in chunk_data],
-                           page_size=100)
+            try:
+                execute_values(cur,
+                               """
+                    WITH inserted_chunks AS (
+                        INSERT INTO chunks 
+                        (document_id, chunk_text, chunk_index, start_char, end_char, metadata)
+                        VALUES %s
+                        RETURNING id
+                    )
+                    INSERT INTO embeddings (chunk_id, embedding)
+                    SELECT ic.id, v.embedding
+                    FROM inserted_chunks ic
+                    JOIN (VALUES %s) AS v(embedding)
+                    ON true
+                    """, [(row[:-1], (row[-1], )) for row in chunk_data],
+                               page_size=100)
+            except Exception as e:
+                print(f"Error inserting chunks: {e}")
 
             self.connection.commit()
 
@@ -94,14 +101,18 @@ class RAGPipeline:
         query_embedding = self.embedding_model.embed_query(query)
 
         with self.connection.cursor() as cur:
-            cur.execute(
-                """
-                SELECT c.chunk_text, c.metadata, 1 - (e.embedding <=> %s) AS similarity
-                FROM embeddings e
-                JOIN chunks c ON e.chunk_id = c.id
-                ORDER BY e.embedding <=> %s
-                LIMIT %s
-            """, (query_embedding, query_embedding, k))
+            try:
+                cur.execute(
+                    """
+                    SELECT c.chunk_text, c.metadata, 1 - (e.embedding <=> %s) AS similarity
+                    FROM embeddings e
+                    JOIN chunks c ON e.chunk_id = c.id
+                    ORDER BY e.embedding <=> %s
+                    LIMIT %s
+                """, (query_embedding, query_embedding, k))
+            except Exception as e:
+                print(f"Error retrieving documents: {e}")
+                return []
 
             results = cur.fetchall()
 
