@@ -2,7 +2,6 @@ import psycopg2
 from psycopg2.extras import execute_values
 from config import config
 from typing import List, Tuple
-from datetime import datetime
 from langchain_core.documents import Document
 import json
 

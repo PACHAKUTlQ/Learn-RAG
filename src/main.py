@@ -1,4 +1,3 @@
-import os
 import argparse
 from config import config
 from typing import List
