@@ -135,13 +135,16 @@ class RAGPipeline:
         query_embedding = self.embedding_model.embed_query(query)
 
         with self.connection.cursor() as cur:
+            # Set the number of probes for the IVFFlat index
+            cur.execute("SET ivfflat.probes = 10")
+
             try:
                 cur.execute(
                     """
-                    SELECT c.chunk_text, c.metadata, 1 - (e.embedding <=> %s) AS similarity
+                    SELECT c.chunk_text, c.metadata, 1 - (e.embedding <=> %s::vector) AS similarity
                     FROM embeddings e
                     JOIN chunks c ON e.chunk_id = c.id
-                    ORDER BY e.embedding <=> %s
+                    ORDER BY e.embedding <=> %s::vector
                     LIMIT %s
                 """, (query_embedding, query_embedding, k))
             except Exception as e:
@@ -150,9 +153,12 @@ class RAGPipeline:
 
             results = cur.fetchall()
 
+            print(len(results), "results retrieved")
+
             retrieved_docs = []
             for chunk_text, metadata, similarity in results:
-                metadata_dict = json.loads(metadata)
+                metadata_dict = metadata if isinstance(
+                    metadata, dict) else json.loads(metadata)
                 doc = Document(page_content=chunk_text, metadata=metadata_dict)
                 retrieved_docs.append((doc, similarity))
 
