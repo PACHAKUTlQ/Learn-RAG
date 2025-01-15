@@ -1,3 +1,4 @@
+import asyncio
 import argparse
 from config import config
 from typing import List
@@ -20,10 +21,10 @@ class RAGCLI:
         if self.rag_pipeline is not None:
             self.rag_pipeline.close()
 
-    def add_documents(self,
-                      file_paths: List[str],
-                      chunk_size: int = config.OPENAI_CHUNK_SIZE,
-                      chunk_overlap: int = 0):
+    async def add_documents(self,
+                            file_paths: List[str],
+                            chunk_size: int = config.OPENAI_CHUNK_SIZE,
+                            chunk_overlap: int = 0):
         """Add and process documents to the vector store."""
         for file_path in file_paths:
             if not Path(file_path).exists():
@@ -43,13 +44,13 @@ class RAGCLI:
             document.load()
             document.split()
 
-            self.rag_pipeline.add_documents(document.chunks)
+            await self.rag_pipeline.add_documents(document.chunks)
 
         print(f"Successfully processed {len(file_paths)} document(s)")
 
-    def query(self, query: str, top_k: int = 5):
+    async def query(self, query: str, top_k: int = 5):
         """Query the vector store for relevant documents."""
-        results = self.rag_pipeline.retrieve(query, k=top_k)
+        results = await self.rag_pipeline.retrieve(query, k=top_k)
 
         print(f"\nTop {top_k} relevant documents:")
         for i, (doc, score) in enumerate(results, 1):
@@ -62,7 +63,7 @@ class RAGCLI:
             print("-" * 80)
 
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(
         description=
         "RAG Pipeline CLI - Manage and query documents using Retrieval Augmented Generation"
@@ -99,15 +100,16 @@ def main():
 
     try:
         if args.command == 'add':
-            cli.add_documents(args.files,
-                              chunk_size=args.chunk_size,
-                              chunk_overlap=args.chunk_overlap)
+            asyncio.run(
+                cli.add_documents(args.files,
+                                  chunk_size=args.chunk_size,
+                                  chunk_overlap=args.chunk_overlap))
         elif args.command == 'query':
-            cli.query(args.query, top_k=args.top_k)
+            await cli.query(args.query, top_k=args.top_k)
     except Exception as e:
         print(f"Error: {str(e)}")
         exit(1)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

@@ -25,7 +25,7 @@ class RAGPipeline:
                                 host=config.PG_HOST,
                                 port=config.PG_PORT)
 
-    def add_documents(self, documents: List[Document]) -> None:
+    async def add_documents(self, documents: List[Document]) -> None:
         """Add documents to the vector store with pre-computed embeddings.
         
         Args:
@@ -35,7 +35,7 @@ class RAGPipeline:
             return
 
         # Prepare data for insertion
-        embeddings = self.embedding_model.embed_documents(
+        embeddings = await self.embedding_model.embed_documents(
             [doc.page_content for doc in documents])
 
         with self.connection.cursor() as cur:
@@ -59,24 +59,12 @@ class RAGPipeline:
             # Insert chunks and embeddings
             chunk_data = []
             for doc_id, doc, embedding in zip(doc_ids, documents, embeddings):
-                print([
-                    doc.metadata.get('chunk_index'),
-                    doc.metadata.get('start_char'),
-                    doc.metadata.get('end_char')
-                ])
                 chunk_data.append(
                     (doc_id, doc.page_content,
                      doc.metadata.get('chunk_index',
                                       0), doc.metadata.get('start_char', 0),
                      doc.metadata.get('end_char',
                                       0), json.dumps(doc.metadata), embedding))
-
-            sample_data = chunk_data.copy()
-            for i in range(len(sample_data)):
-                sample_data[i] = list(sample_data[i])
-                sample_data[i][1] = ''  # empty page_content
-                sample_data[i][6] = []  # empty embedding
-            print("Sample data:", sample_data)
 
             # Insert chunks and embeddings in a single transaction
             try:
@@ -122,7 +110,9 @@ class RAGPipeline:
                 self.connection.rollback()
                 print(f"Error inserting chunks: {e}")
 
-    def retrieve(self, query: str, k: int = 5) -> List[Tuple[Document, float]]:
+    async def retrieve(self,
+                       query: str,
+                       k: int = 5) -> List[Tuple[Document, float]]:
         """Retrieve relevant documents for a query.
         
         Args:
@@ -132,7 +122,7 @@ class RAGPipeline:
         Returns:
             List of tuples containing (Document, similarity_score)
         """
-        query_embedding = self.embedding_model.embed_query(query)
+        query_embedding = await self.embedding_model.embed_query(query)
 
         with self.connection.cursor() as cur:
             # Set the number of probes for the IVFFlat index
