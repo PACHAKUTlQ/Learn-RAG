@@ -29,3 +29,25 @@ class Document:
         text_splitter = CharacterTextSplitter(chunk_size=self.chunk_size,
                                               chunk_overlap=self.chunk_overlap)
         self.chunks = text_splitter.split_documents(self.raw_documents)
+
+        # Combine chunks that are too small
+        i = 0
+        while i < len(self.chunks) - 1:
+            if len(self.chunks[i].page_content) < self.chunk_size - 100:
+                # Merge current chunk with next chunk
+                self.chunks[i].page_content += self.chunks[i + 1].page_content
+                # Remove the next chunk
+                self.chunks.pop(i + 1)
+            else:
+                i += 1
+
+        # Add proper chunk metadata
+        start_char = 0
+        for i, chunk in enumerate(self.chunks):
+            end_char = start_char + len(chunk.page_content)
+            chunk.metadata.update({
+                'chunk_index': i,
+                'start_char': start_char,
+                'end_char': end_char
+            })
+            start_char = end_char - self.chunk_overlap + 1

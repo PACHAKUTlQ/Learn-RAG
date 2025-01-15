@@ -59,33 +59,49 @@ class RAGPipeline:
             # Insert chunks and embeddings
             chunk_data = []
             for doc_id, doc, embedding in zip(doc_ids, documents, embeddings):
-                chunk_data.append((doc_id, doc.page_content,
-                                   doc.metadata.get('chunk_index', 0),
-                                   doc.metadata.get('start_char'),
-                                   doc.metadata.get('end_char'),
-                                   json.dumps(doc.metadata), embedding))
+                chunk_data.append(
+                    (doc_id, doc.page_content,
+                     doc.metadata.get('chunk_index',
+                                      0), doc.metadata.get('start_char', 0),
+                     doc.metadata.get('end_char',
+                                      0), json.dumps(doc.metadata), embedding))
+
+            # print(chunk_data)
 
             # Insert chunks and embeddings in a single transaction
             try:
                 execute_values(cur,
                                """
-                    WITH inserted_chunks AS (
-                        INSERT INTO chunks 
-                        (document_id, chunk_text, chunk_index, start_char, end_char, metadata)
-                        VALUES %s
+                    WITH data AS (
+                        SELECT x.doc_id,
+                            x.page_content,
+                            x.chunk_index,
+                            x.start_char,
+                            x.end_char,
+                            x.metadata_json::jsonb as metadata,
+                            x.embedding
+                        FROM (VALUES %s)
+                        AS x(doc_id, page_content, chunk_index, start_char, end_char, metadata_json, embedding)
+                    ),
+                    inserted_chunks AS (
+                        INSERT INTO chunks
+                            (document_id, chunk_text, chunk_index, start_char, end_char, metadata)
+                        SELECT doc_id, page_content, chunk_index, start_char, end_char, metadata
+                        FROM data
                         RETURNING id
                     )
                     INSERT INTO embeddings (chunk_id, embedding)
-                    SELECT ic.id, v.embedding
-                    FROM inserted_chunks ic
-                    JOIN (VALUES %s) AS v(embedding)
-                    ON true
-                    """, [(row[:-1], (row[-1], )) for row in chunk_data],
+                    SELECT inserted_chunks.id, data.embedding
+                    FROM inserted_chunks
+                    JOIN data ON true
+                    """,
+                               chunk_data,
                                page_size=100)
-            except Exception as e:
-                print(f"Error inserting chunks: {e}")
 
-            self.connection.commit()
+                self.connection.commit()
+            except Exception as e:
+                self.connection.rollback()
+                print(f"Error inserting chunks: {e}")
 
     def retrieve(self, query: str, k: int = 5) -> List[Tuple[Document, float]]:
         """Retrieve relevant documents for a query.

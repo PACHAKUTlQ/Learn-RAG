@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 
 class Config:
-    """Configuration for Chroma and OpenAI."""
+    """Configuration for PostgreSQL and embedding."""
 
     def __init__(self):
         """Initialize configuration settings, reading from environment variables."""

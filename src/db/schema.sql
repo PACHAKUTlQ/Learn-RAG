@@ -47,4 +47,4 @@ COMMENT ON COLUMN chunks.chunk_index IS 'Position of chunk in document (0-based)
 COMMENT ON COLUMN chunks.start_char IS 'Starting character position in original document';
 COMMENT ON COLUMN chunks.end_char IS 'Ending character position in original document';
 COMMENT ON COLUMN chunks.metadata IS 'Additional metadata as key-value pairs';
-COMMENT ON COLUMN embeddings.embedding IS '1536-dimensional vector embedding of the chunk';
+COMMENT ON COLUMN embeddings.embedding IS '384-dimensional vector embedding of the chunk';
